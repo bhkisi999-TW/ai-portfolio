@@ -499,3 +499,56 @@ button.feature__info:hover .feature__more, button.feature__info:focus-visible .f
   .cap-btn:hover,
   .feature__media:hover .feature__play, .feature__media:focus-visible .feature__play { transform: none; }
 }
+
+/* ==========================================================
+   玻璃字卡：純玻璃反光＋每 3 張一組輪換顏色（4 色）
+   作品卡與能力方向卡共用。依「畫面上的顯示順序」輪換（篩選後也一樣）：
+   第 1–3 張 霧玫瑰 → 第 4–6 張 琥珀金 → 第 7–9 張 紫羅蘭 → 第 10–12 張 珊瑚橘 → 再從頭輪回
+   每個顏色有四個變數：--tint（RGB）、--tint-dk（深色底）、--tint-lt（編號與標籤）、--tint-sub（說明文字）
+   ========================================================== */
+.grid > li, .skill-grid > li, .method {
+  --tint: 192, 98, 128;   --tint-dk: 46, 34, 48;   --tint-lt: #f6b9cb;   --tint-sub: #f4d3dd;   /* 霧玫瑰 */
+}
+.grid > li:nth-child(12n+4), .grid > li:nth-child(12n+5), .grid > li:nth-child(12n+6),
+.skill-grid > li:nth-child(12n+4), .skill-grid > li:nth-child(12n+5), .skill-grid > li:nth-child(12n+6) {
+  --tint: 204, 148, 62;   --tint-dk: 49, 44, 34;   --tint-lt: #f4d08f;   --tint-sub: #f3e2bf;   /* 琥珀金 */
+}
+.grid > li:nth-child(12n+7), .grid > li:nth-child(12n+8), .grid > li:nth-child(12n+9),
+.skill-grid > li:nth-child(12n+7), .skill-grid > li:nth-child(12n+8), .skill-grid > li:nth-child(12n+9) {
+  --tint: 118, 92, 210;   --tint-dk: 32, 32, 64;   --tint-lt: #c9bbff;   --tint-sub: #ddd5ff;   /* 紫羅蘭 */
+}
+.grid > li:nth-child(12n+10), .grid > li:nth-child(12n+11), .grid > li:nth-child(12n+12),
+.skill-grid > li:nth-child(12n+10), .skill-grid > li:nth-child(12n+11), .skill-grid > li:nth-child(12n+12) {
+  --tint: 226, 120, 92;   --tint-dk: 53, 38, 40;   --tint-lt: #ffc3ae;   --tint-sub: #ffd9cc;   /* 珊瑚橘 */
+}
+
+/* 純玻璃反光：上方白色反光，下方文字區帶顏色、較暗好讀；不用模糊，效能最好 */
+.card, .skill, .method {
+  background: linear-gradient(155deg,
+    rgba(255,255,255,.14) 0%, rgba(255,255,255,.04) 26%,
+    rgba(var(--tint), .24) 52%, rgba(var(--tint-dk), .84) 100%);
+  border: 1px solid rgba(var(--tint), .55);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.30), 0 14px 28px rgba(0,0,0,.45);
+}
+.card:hover, .skill:hover {
+  border-color: rgba(var(--tint), .85);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 18px 40px rgba(0,0,0,.5), 0 0 26px rgba(var(--tint), .18);
+}
+.card:focus-visible { outline-color: var(--tint-lt); border-color: var(--tint-lt); }
+.card__media { border-bottom-color: rgba(var(--tint), .35); }
+
+/* 文字點綴跟著卡片顏色 */
+.card__num, .card__cat, .skill__num, .skill__icon, .method .eyebrow, .method__num { color: var(--tint-lt); }
+.skill__points { border-top-color: rgba(var(--tint), .35); }
+.skill__points li::before { background: var(--tint-lt); }
+.card__badge { color: var(--text); border-color: rgba(var(--tint), .55); background: rgba(var(--tint), .12); }
+.card__more { border-color: rgba(var(--tint), .55); background: rgba(var(--tint), .10); }
+.card:hover .card__more, .card:focus-visible .card__more { border-color: var(--tint-lt); color: var(--tint-lt); background: rgba(var(--tint), .18); }
+.skill .evidence { border-color: rgba(var(--tint), .45); background: rgba(var(--tint-dk), .5); }
+.skill .evidence:hover { color: var(--tint-lt); border-color: var(--tint-lt); }
+
+/* 說明文字帶卡片色的淺色（比原本的灰色清楚，層次仍低於白色標題） */
+.skill__summary, .card__summary { color: var(--tint-sub); }
+.skill__evidence-label { color: var(--tint-lt); }
+.skill .evidence { color: #e6eef3; }

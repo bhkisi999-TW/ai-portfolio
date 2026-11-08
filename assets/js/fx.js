@@ -24,8 +24,11 @@
     color: "129, 216, 208",   // 電流顏色（蒂芬妮藍）
     spotlight: 170,           // 滑鼠反光半徑（px）
     // 走線緊貼繞開的文字與按鈕（只避開字和按鈕本身，不會空出一大塊）
-    quietText: ".hero .eyebrow, .hero__title, .hero__lead, .hero__stats dt, .hero__stats dd, .section__head .eyebrow, .section__title, .section__desc",
-    quietBox: ".hero__actions .btn, .filters .chip",
+    quietText: ".hero .eyebrow, .hero__title, .hero__lead, .hero__stats dt, .hero__stats dd, .section__head .eyebrow, .section__title, .section__desc," +
+               " .skill__num, .skill__title, .skill__summary, .skill__points li, .skill__evidence-label," +
+               " .method .eyebrow, .method__title, .method__num, .method__step-title, .method__text," +
+               " .card__meta, .card__cat, .card__title, .card__summary",
+    quietBox: ".hero__actions .btn, .filters .chip, .evidence, .card__more",
     quietPad: 6               // 文字與走線之間的間距（px）
   };
 
@@ -174,6 +177,8 @@
   }
 
   function drawBoard(sy, vis) {
+    // 視窗大小為 0（例如分頁在背景載入）時先不畫，避免漸層計算出錯
+    if (!(W > 0 && H > 0)) return;
     // 走線：金屬拉絲般的明暗變化
     var shift = (sy * 0.12) % (W + H);
     var metal = ctx.createLinearGradient(-shift, 0, W + H - shift, H);

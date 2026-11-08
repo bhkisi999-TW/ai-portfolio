@@ -136,13 +136,9 @@ window.PORTFOLIO_CAPABILITIES = [
   }
 ];
 
-window.PORTFOLIO_METHOD = {
-  "title": "從需求到檢核的規劃流程",
-  "steps": [
-    { "title": "釐清需求", "text": "SWOT 分析、SMART 目標" },
-    { "title": "評估方案", "text": "加權評分、決策矩陣" },
-    { "title": "規劃執行", "text": "WBS、甘特圖、RACI、風險矩陣" },
-    { "title": "檢核改善", "text": "KPI、活動後問卷、PDCA" }
-  ],
-  "evidence": [{ "work": "jinyuanbao-year-end-party-2026", "note": "依尾牙企畫書章節架構整理" }]
-};
+/*
+ * 「從需求到檢核的規劃流程」區塊已於 2026-11-08 移除（內容與上方能力卡重複）。
+ * 原始資料備份在 _舊版備份/method-20261108/capabilities.js，
+ * 要加回來時，把那段 window.PORTFOLIO_METHOD = {...} 貼回這裡即可。
+ */
+window.PORTFOLIO_METHOD = null;
