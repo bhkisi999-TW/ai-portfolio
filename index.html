@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 實戰作品集</title>
+  <meta name="description" content="AI 商業應用實戰作品集：提案簡報、品牌視覺、營運自動化等作品展示。">
+  <meta name="theme-color" content="#0a111d">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261108g">
+</head>
+<body>
+  <canvas class="fx" id="fx" aria-hidden="true"></canvas>
+  <a class="skip-link" href="#works">跳到作品區</a>
+
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="logo" href="#top" aria-label="回到頁首">
+        <span class="logo__mark" aria-hidden="true"></span>
+        <span class="logo__text" data-site="brandEn"></span>
+      </a>
+      <nav class="topbar__nav" aria-label="主要導覽">
+        <a href="#capabilities" data-requires-works>能力方向</a>
+        <a href="#works">作品</a>
+      </nav>
+      <a class="btn btn--primary btn--sm topbar__cta" href="#works">瀏覽作品 <span aria-hidden="true">↘</span></a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero__inner">
+        <div class="hero__text">
+          <p class="eyebrow" data-site="brandEn"></p>
+          <h1 id="hero-title" class="hero__title" data-site="brand"></h1>
+          <p class="hero__lead" data-site="tagline"></p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="#works">瀏覽作品 <span aria-hidden="true">↘</span></a>
+            <a class="btn btn--ghost" href="#capabilities" data-requires-works>能力方向 <span aria-hidden="true">→</span></a>
+          </div>
+          <dl class="hero__stats">
+            <div><dt>作品數</dt><dd id="stat-works">00</dd></div>
+            <div><dt>作品類型</dt><dd id="stat-cats">00</dd></div>
+          </dl>
+        </div>
+        <div class="hero__feature" id="hero-feature" hidden></div>
+      </div>
+      <svg class="hero__current" id="hero-current" aria-hidden="true" focusable="false"></svg>
+    </section>
+
+    <section id="capabilities" class="section section--alt capabilities" aria-labelledby="cap-title" hidden>
+      <div class="container">
+        <header class="section__head">
+          <p class="eyebrow"><span class="eyebrow__num">01</span> Capabilities</p>
+          <h2 id="cap-title" class="section__title">能力方向</h2>
+          <p class="section__desc" id="cap-desc">依已完成作品整理，點選可直接篩選該類作品。</p>
+        </header>
+        <ul class="skill-grid" id="skill-list" hidden></ul>
+        <div class="method" id="method" hidden></div>
+        <ul class="cap-list" id="cap-list"></ul>
+      </div>
+    </section>
+
+    <section id="works" class="section works" aria-labelledby="works-title" tabindex="-1">
+      <div class="container">
+        <header class="section__head">
+          <p class="eyebrow"><span class="eyebrow__num" id="works-index">01</span> Selected Works</p>
+          <h2 id="works-title" class="section__title">作品</h2>
+        </header>
+
+        <div class="filters" id="filters" role="toolbar" aria-label="依作品類型篩選" hidden></div>
+        <p class="sr-only" id="filter-status" aria-live="polite"></p>
+
+        <ul class="grid" id="grid"></ul>
+
+        <div class="empty" id="empty" hidden>
+          <div class="empty__frame">
+            <div class="empty__icon" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <p class="eyebrow eyebrow--center">Coming soon</p>
+            <h3 class="empty__title">作品整理中</h3>
+            <p class="empty__text">目前尚無可公開展示的作品。<br>完成並整理好的作品會陸續發布在這裡。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <span class="footer__brand" data-site="brand"></span>
+      <span class="footer__note" data-site="footerNote"></span>
+    </div>
+  </footer>
+
+  <dialog class="modal" id="modal" aria-labelledby="modal-title">
+    <div class="modal__panel">
+      <button type="button" class="modal__close" id="modal-close" aria-label="關閉作品詳情">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="modal__body" id="modal-body"></div>
+    </div>
+  </dialog>
+
+  <script src="data/site.js?v=20261108g"></script>
+  <script src="data/works.js?v=20261108g"></script>
+  <script src="data/capabilities.js?v=20261108g"></script>
+  <script src="assets/js/app.js?v=20261108g"></script>
+  <script src="assets/js/fx.js?v=20261108g"></script>
+</body>
+</html>
