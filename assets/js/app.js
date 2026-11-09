@@ -248,6 +248,7 @@
 
   function renderFeature(works, catMap) {
     var box = $("#hero-feature");
+    if (!box) return;   // 首頁改成自我介紹卡後，沒有「最新作品」區塊
     box.innerHTML = "";
     var w = latestWork(works);
     if (!w) { box.hidden = true; return; }
@@ -565,9 +566,11 @@
     state.data = loadData();
     if (state.filter !== "all" && !state.data.cats.some(function (c) { return c.id === state.filter; })) state.filter = "all";
     renderSite(state.data.site);
-    $("#stat-works").textContent = pad(state.data.works.length);
-    $("#stat-cats").textContent = pad(state.data.cats.length);
-    $(".hero__stats").hidden = state.data.works.length === 0;
+    // 作品數（自我介紹卡上的「AI 實戰作品 N 件」）會依作品資料自動更新
+    var statWorks = $("#stat-works"), statCats = $("#stat-cats"), heroStats = $(".hero__stats");
+    if (statWorks) statWorks.textContent = pad(state.data.works.length);
+    if (statCats) statCats.textContent = pad(state.data.cats.length);
+    if (heroStats) heroStats.hidden = state.data.works.length === 0;
     renderFeature(state.data.works, state.data.catMap);
     renderCapabilities(state.data.cats);
     renderFilters(state.data.cats, state.data.works.length);

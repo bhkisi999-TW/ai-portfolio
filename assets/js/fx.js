@@ -27,9 +27,15 @@
     quietText: ".hero .eyebrow, .hero__title, .hero__lead, .hero__stats dt, .hero__stats dd, .section__head .eyebrow, .section__title, .section__desc," +
                " .skill__num, .skill__title, .skill__summary, .skill__points li, .skill__evidence-label," +
                " .method .eyebrow, .method__title, .method__num, .method__step-title, .method__text," +
-               " .card__meta, .card__cat, .card__title, .card__summary",
-    quietBox: ".hero__actions .btn, .filters .chip, .evidence, .card__more",
-    quietPad: 6               // 文字與走線之間的間距（px）
+               " .card__meta, .card__cat, .card__title, .card__summary," +
+               " .about__label, .about__name, .about__title, .about__edu li, .about__lead, .about__stats dt, .about__stats dd",
+    quietBox: ".hero__actions .btn, .filters .chip, .evidence, .card__more, .about__tag, .about__tools li, .about__cta",
+    quietPad: 6,              // 文字與走線之間的間距（px）
+    // 人物遮罩：元素加上 data-fx-mask="遮罩圖片網址"（白＝人物），走線會沿人物輪廓繞開
+    // 換色區：卡片裡的走線、反光與電流改用卡片的顏色（讀卡片的 CSS 變數 --tint），
+    //         其他元素也可以加 data-fx-tint="R, G, B" 指定顏色
+    maskSel: "[data-fx-mask]",
+    tintSel: "[data-fx-tint], .about, .skill, .card"
   };
 
   var canvas = document.getElementById("fx");
@@ -67,6 +73,27 @@
     return { pts: pts, cum: cum, total: cum[cum.length - 1], minX: minX, maxX: maxX, minY: minY, maxY: maxY, via0: false };
   }
 
+  /* ---------- 人物遮罩：載入一次後快取像素；載入完成時重新佈局 ---------- */
+  var masks = {};
+  function maskData(url) {
+    if (!url) return null;
+    var m = masks[url];
+    if (m) return m.ready ? m : null;
+    m = masks[url] = { ready: false };
+    var img = new Image();
+    img.onload = function () {
+      var c = document.createElement("canvas");
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      var x = c.getContext("2d");
+      x.drawImage(img, 0, 0);
+      m.d = x.getImageData(0, 0, c.width, c.height).data;
+      m.w = c.width; m.h = c.height; m.ready = true;
+      docH = 0; resize(); if (!running) drawStatic();
+    };
+    img.src = url;
+    return null;
+  }
+
   /* ---------- 產生整頁走線（細密迷宮） ---------- */
   function layout() {
     var R = mulberry32(CONFIG.seed * 7919 + Math.round(W / 50));
@@ -94,6 +121,23 @@
     });
     // 按鈕：取按鈕外框
     document.querySelectorAll(CONFIG.quietBox).forEach(function (el) { block(el.getBoundingClientRect()); });
+    // 人物遮罩：沿著人物輪廓（外擴 1 格）佔掉，走線就會繞開人物
+    document.querySelectorAll(CONFIG.maskSel).forEach(function (el) {
+      var m = maskData(el.getAttribute("data-fx-mask"));
+      var r = el.getBoundingClientRect();
+      if (!m || !r.width || !r.height) return;
+      var top = r.top + sy;
+      var i0 = Math.max(0, Math.floor(r.left / C)), i1 = Math.min(cols - 1, Math.ceil(r.right / C));
+      var j0 = Math.max(0, Math.floor(top / C)), j1 = Math.min(rows - 1, Math.ceil((top + r.height) / C));
+      for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+        var u = Math.floor((i * C - r.left) / r.width * m.w), v = Math.floor((j * C - top) / r.height * m.h);
+        if (u < 0 || v < 0 || u >= m.w || v >= m.h || m.d[(v * m.w + u) * 4] < 24) continue;
+        for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+          var a = i + dx, b = j + dy;
+          if (a >= 0 && b >= 0 && a < cols && b < rows) occ[id(a, b)] = 1;
+        }
+      }
+    });
 
     function canStep(i, j, d) {
       var ni = i + D8[d][0], nj = j + D8[d][1];
@@ -176,18 +220,28 @@
     for (var i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1] - sy);
   }
 
-  function drawBoard(sy, vis) {
+  // tint：換色區的顏色（"R, G, B"）；沒有傳就用預設的金屬銀灰與蒂芬妮藍
+  function drawBoard(sy, vis, tint) {
     // 視窗大小為 0（例如分頁在背景載入）時先不畫，避免漸層計算出錯
     if (!(W > 0 && H > 0)) return;
-    // 走線：金屬拉絲般的明暗變化
+    var accent = tint || CONFIG.color;
+    // 走線：金屬拉絲般的明暗變化（換色區改成該顏色的明暗）
     var shift = (sy * 0.12) % (W + H);
     var metal = ctx.createLinearGradient(-shift, 0, W + H - shift, H);
-    metal.addColorStop(0.00, "rgba(140,175,198,0.15)");
-    metal.addColorStop(0.22, "rgba(190,220,234,0.24)");
-    metal.addColorStop(0.42, "rgba(125,158,182,0.13)");
-    metal.addColorStop(0.62, "rgba(180,212,228,0.22)");
-    metal.addColorStop(0.82, "rgba(125,158,182,0.13)");
-    metal.addColorStop(1.00, "rgba(160,195,215,0.19)");
+    if (tint) {
+      metal.addColorStop(0.00, "rgba(" + tint + ",0.26)");
+      metal.addColorStop(0.30, "rgba(" + tint + ",0.42)");
+      metal.addColorStop(0.55, "rgba(" + tint + ",0.24)");
+      metal.addColorStop(0.80, "rgba(" + tint + ",0.40)");
+      metal.addColorStop(1.00, "rgba(" + tint + ",0.28)");
+    } else {
+      metal.addColorStop(0.00, "rgba(140,175,198,0.15)");
+      metal.addColorStop(0.22, "rgba(190,220,234,0.24)");
+      metal.addColorStop(0.42, "rgba(125,158,182,0.13)");
+      metal.addColorStop(0.62, "rgba(180,212,228,0.22)");
+      metal.addColorStop(0.82, "rgba(125,158,182,0.13)");
+      metal.addColorStop(1.00, "rgba(160,195,215,0.19)");
+    }
     ctx.lineWidth = 1;
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     ctx.strokeStyle = metal;
@@ -196,7 +250,7 @@
     ctx.stroke();
 
     // 過孔（焊點）
-    ctx.strokeStyle = "rgba(180,212,228,0.30)";
+    ctx.strokeStyle = tint ? "rgba(" + tint + ",0.5)" : "rgba(180,212,228,0.30)";
     ctx.beginPath();
     for (i = 0; i < vis.length; i++) {
       var p = vis[i].pts, e = p[p.length - 1];
@@ -209,8 +263,8 @@
     if (mouse && !reduce.matches) {
       var mx = mouse.x, my = mouse.y, R = CONFIG.spotlight;
       var glow = ctx.createRadialGradient(mx, my - sy, 0, mx, my - sy, R);
-      glow.addColorStop(0, "rgba(" + CONFIG.color + ",0.62)");
-      glow.addColorStop(1, "rgba(" + CONFIG.color + ",0)");
+      glow.addColorStop(0, "rgba(" + accent + "," + (tint ? 0.85 : 0.62) + ")");
+      glow.addColorStop(1, "rgba(" + accent + ",0)");
       ctx.strokeStyle = glow;
       ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -273,7 +327,14 @@
     if (n.at > 20) spawn(n.t, n.at, -1, true);
   }
 
-  function drawCurrent(c, sy) {
+  // 電流跑完（超過終點一個尾巴長度）就移除
+  function currentDone(c) {
+    var endPos = c.dir > 0 ? Math.min(c.t.total, c.from + c.len) : Math.max(0, c.from - c.len);
+    return (c.dir > 0 ? c.pos - endPos : endPos - c.pos) > c.tail;
+  }
+
+  function drawCurrent(c, sy, color) {
+    color = color || CONFIG.color;
     var endPos = c.dir > 0 ? Math.min(c.t.total, c.from + c.len) : Math.max(0, c.from - c.len);
     var over = c.dir > 0 ? c.pos - endPos : endPos - c.pos;
     var head = c.dir > 0 ? Math.min(c.pos, endPos) : Math.max(c.pos, endPos);
@@ -284,15 +345,45 @@
     for (var n = 0; n < 5; n++) {
       var a = tp + (head - tp) * n / 5, b = tp + (head - tp) * (n + 1) / 5;
       if (Math.abs(b - a) < 0.5) continue;
-      ctx.strokeStyle = "rgba(" + CONFIG.color + "," + (c.alpha * fade * (n + 1) / 5).toFixed(3) + ")";
+      ctx.strokeStyle = "rgba(" + color + "," + (c.alpha * fade * (n + 1) / 5).toFixed(3) + ")";
       strokeRange(c.t, a, b, sy);
     }
     if (over <= 0) {
       var p = pointAt(c.t, head);
-      ctx.fillStyle = "rgba(225,255,252," + c.alpha.toFixed(2) + ")";
+      ctx.fillStyle = "rgba(255,252,240," + c.alpha.toFixed(2) + ")";
       ctx.beginPath(); ctx.arc(p[0], p[1] - sy, 2, 0, Math.PI * 2); ctx.fill();
     }
-    return over > c.tail;
+  }
+
+  // 畫一整層：走線、反光、電流（tint 有值時用該顏色）
+  function paint(sy, vis, tint) {
+    drawBoard(sy, vis, tint);
+    var color = tint || CONFIG.color;
+    ctx.save();
+    ctx.shadowColor = "rgba(" + color + ",0.95)";
+    ctx.shadowBlur = 9;
+    ctx.lineCap = "round";
+    for (var i = 0; i < currents.length; i++) drawCurrent(currents[i], sy, color);
+    ctx.restore();
+  }
+
+  // 換色區：先清掉該區塊，再用指定顏色重畫一次（只畫在區塊範圍內）
+  function paintTintZones(sy, vis) {
+    var zones = document.querySelectorAll(CONFIG.tintSel);
+    for (var z = 0; z < zones.length; z++) {
+      var el = zones[z], r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > H || !r.width) continue;
+      var tint = el.getAttribute("data-fx-tint") || getComputedStyle(el).getPropertyValue("--tint").trim();
+      if (!tint) continue;
+      // 只取跟這個區塊重疊的走線，減少重畫的量
+      var top = r.top + sy, bottom = r.bottom + sy;
+      var local = vis.filter(function (t) { return t.maxY >= top && t.minY <= bottom && t.maxX >= r.left && t.minX <= r.right; });
+      ctx.save();
+      ctx.beginPath(); ctx.rect(r.left, r.top, r.width, r.height); ctx.clip();
+      ctx.clearRect(r.left, r.top, r.width, r.height);
+      paint(sy, local, tint);
+      ctx.restore();
+    }
   }
 
   /* ---------- 主迴圈 ---------- */
@@ -306,8 +397,6 @@
     if (Math.abs(h - docH) > 200) { docH = h; layout(); }
 
     var vis = visibleTraces(sy - 20, sy + H + 20);
-    ctx.clearRect(0, 0, W, H);
-    drawBoard(sy, vis);
 
     // 背景電流：維持固定數量
     var ambient = 0, cursorN = 0;
@@ -325,16 +414,16 @@
       if (dx * dx + dy * dy > 22 * 22) { lastSpawn = { x: mouse.x, y: mouse.y }; burstAt(mouse.x, mouse.y, vis); }
     }
 
-    ctx.save();
-    ctx.shadowColor = "rgba(" + CONFIG.color + ",0.95)";
-    ctx.shadowBlur = 9;
-    ctx.lineCap = "round";
+    // 推進電流，跑完或離畫面太遠的移除
     for (var i = currents.length - 1; i >= 0; i--) {
       var c = currents[i];
       c.pos += c.dir * c.speed * dt;
-      if (c.t.maxY < sy - 400 || c.t.minY > sy + H + 400 || drawCurrent(c, sy)) currents.splice(i, 1);
+      if (c.t.maxY < sy - 400 || c.t.minY > sy + H + 400 || currentDone(c)) currents.splice(i, 1);
     }
-    ctx.restore();
+
+    ctx.clearRect(0, 0, W, H);
+    paint(sy, vis);
+    paintTintZones(sy, vis);
     if (!once) requestAnimationFrame(frame);
   }
 
@@ -342,8 +431,12 @@
     var sy = window.scrollY || 0;
     var h = document.documentElement.scrollHeight;
     if (Math.abs(h - docH) > 200) { docH = h; layout(); }
+    var vis = visibleTraces(sy - 20, sy + H + 20);
     ctx.clearRect(0, 0, W, H);
-    drawBoard(sy, visibleTraces(sy - 20, sy + H + 20));
+    drawBoard(sy, vis);
+    var saved = currents; currents = [];
+    paintTintZones(sy, vis);
+    currents = saved;
   }
 
   function start() {
