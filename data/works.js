@@ -108,5 +108,22 @@ window.PORTFOLIO_WORKS = [
       { "type": "video", "src": "works/lixianchong-product-ad/promo-film.mp4", "duration": "0:34", "caption": "理線充品牌短影音（約 34 秒）" }
     ],
     "completedAt": "2026-11-06"
+  },
+  {
+    "id": "ai-social-auto-post",
+    "title": "AI 社群貼文自動生成與發布流程",
+    "category": "social-content",
+    "summary": "用 Google Opal 生成 IG 貼文的文案與圖片，再以 Make 串接試算表、Facebook 粉專與 Gmail，完成自動發文。",
+    "description": "第一段：用 Google Opal 串成多步驟生成工作流。輸入 AI 相關主題後，依序生成 IG 貼文文案、把文案轉成圖片生成指令、產出 1:1 圖片，最後把文案與圖片排成 IG 版面輸出，並附上下載連結方便轉貼。\n\n第二段：用 Make 建立自動發文流程。Google 試算表新增一列貼文資料後，自動發布含圖片的 Facebook 粉專貼文，接著回寫試算表狀態，並寄送 Gmail 通知。設定過程搭配 Claude 協助，例如調整 Google 雲端硬碟圖片的共用權限，讓 Make 能讀取圖片。\n\n最後一張截圖是由 Make 自動發布到 Facebook 粉專的實際貼文。",
+    "tools": ["Google Opal", "Make", "Google 試算表", "Facebook 粉專", "Gmail", "Claude"],
+    "coverImage": "works/ai-social-auto-post/post-1.jpg",
+    "preview": [
+      { "type": "image", "src": "works/ai-social-auto-post/opal-workflow.jpg", "alt": "Google Opal 社群貼文生成工作流節點圖", "caption": "Google Opal 工作流：主題 → 文案 → 圖片指令 → 出圖 → IG 版面" },
+      { "type": "image", "src": "works/ai-social-auto-post/post-1.jpg", "alt": "工作流產出的 IG 貼文：藍色機甲戰士", "caption": "產出的 IG 貼文 1" },
+      { "type": "image", "src": "works/ai-social-auto-post/post-2.jpg", "alt": "工作流產出的 IG 貼文：賽博戰甲", "caption": "產出的 IG 貼文 2" },
+      { "type": "image", "src": "works/ai-social-auto-post/make-scenario.jpg", "alt": "Make 自動發文流程：Google 試算表、Facebook 粉專、Google 試算表、Gmail 四個模組，右側為 Claude 協助設定的對話", "caption": "Make 自動化流程與 Claude 協助設定" },
+      { "type": "image", "src": "works/ai-social-auto-post/facebook-post.jpg", "alt": "由 Make 自動發布到 Facebook 粉專的貼文截圖", "caption": "實際發布結果：由 Make 自動發布的 Facebook 粉專貼文" }
+    ],
+    "completedAt": "2026-11-09"
   }
 ];

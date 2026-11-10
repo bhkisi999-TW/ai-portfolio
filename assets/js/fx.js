@@ -5,9 +5,14 @@
  *   遇到別的線就轉彎，因此錯綜複雜又不會交叉；末端有焊點（過孔）。
  *   文字區（首頁介紹、各區標題）一開始就不長線。
  * - 電流：背景隨時有幾道光沿走線流動；滑鼠移動時，從游標最近的走線
- *   往兩個方向放出電流，附近的走線也會反光。手機上點一下也會放出電流。
+ *   往兩個方向放出電流，附近的走線也會反光。
+ * - 手機（沒有滑鼠）：手指點一下，點擊處會亮起一圈反光，並從附近幾條走線放出電流。
+ * - 分兩層畫（2026-11-10 起）：
+ *   1. 電路板層：走線與焊點畫在「跟著頁面一起捲動」的分塊畫布上，只畫一次，
+ *      捲動時由瀏覽器直接移動，不用重畫，手機滑動才會順。
+ *   2. 動態層：電流與反光畫在固定於視窗的 canvas（#fx）上，每格更新。
  * - 開啟「減少動態效果」時只畫靜態走線；分頁不在前景時暫停。
- * - 畫在固定於視窗的 canvas 上（在文字與卡片後面），不影響點擊。
+ * - 兩層都在文字與卡片後面，不影響點擊。
  * 調整參數請改下方 CONFIG。
  */
 (function () {
@@ -23,6 +28,12 @@
     cursorMax: 8,             // 滑鼠電流同時最多幾道
     color: "129, 216, 208",   // 電流顏色（蒂芬妮藍）
     spotlight: 170,           // 滑鼠反光半徑（px）
+    // 手機點擊：找點擊處附近幾條走線放電流，並亮起一圈反光
+    tapRadius: 110,           // 往外找走線的範圍（px）
+    tapTraces: 4,             // 最多從幾條走線放電流（每條往兩個方向）
+    tapGlow: 140,             // 點擊反光半徑（px）
+    tapGlowMs: 900,           // 點擊反光淡出時間（毫秒）
+    tapMax: 16,               // 點擊電流同時最多幾道
     // 走線緊貼繞開的文字與按鈕（只避開字和按鈕本身，不會空出一大塊）
     quietText: ".hero .eyebrow, .hero__title, .hero__lead, .hero__stats dt, .hero__stats dd, .section__head .eyebrow, .section__title, .section__desc," +
                " .skill__num, .skill__title, .skill__summary, .skill__points li, .skill__evidence-label," +
@@ -44,13 +55,20 @@
   if (!ctx) return;
   document.documentElement.classList.add("has-fx");
 
+  // 電路板層：放在 canvas 前面，跟著頁面捲動
+  var board = document.createElement("div");
+  board.className = "fx-board";
+  board.setAttribute("aria-hidden", "true");
+  canvas.parentNode.insertBefore(board, canvas);
+
   var reduce = matchMedia("(prefers-reduced-motion: reduce)");
   var coarse = matchMedia("(hover: none), (pointer: coarse)").matches;
   var W = 0, H = 0, dpr = 1, docH = 0, layoutW = 0;
   var traces = [], buckets = [], BUCKET = 200;
   var mouse = null, lastSpawn = { x: -1e4, y: -1e4 };
-  var currents = [], nextAmbient = 0;
+  var currents = [], nextAmbient = 0, taps = [];
   var running = false, lastT = 0;
+  var TILE = 1024, tiles = [], zones = [], boardDpr = 1;
 
   var D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
 
@@ -188,6 +206,14 @@
     });
     layoutW = W;
     currents = [];
+    taps = [];
+    measureZones();
+    rebuildTiles();
+  }
+
+  // 頁面內容高度：量 body（不含電路板層本身，否則電路板會把頁面越撐越高）
+  function docHeight() {
+    return Math.max(document.body.offsetHeight, window.innerHeight || 0);
   }
 
   function visibleTraces(top, bottom) {
@@ -203,81 +229,171 @@
     return out;
   }
 
+  /* ---------- 換色區：記住各卡片在整頁中的位置（版面變動時才重量） ---------- */
+  function measureZones() {
+    var sy = window.scrollY || 0, list = [];
+    var els = document.querySelectorAll(CONFIG.tintSel);
+    for (var z = 0; z < els.length; z++) {
+      var el = els[z], r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      var tint = el.getAttribute("data-fx-tint") || getComputedStyle(el).getPropertyValue("--tint").trim();
+      if (!tint) continue;
+      list.push({ l: r.left, r: r.right, t: r.top + sy, b: r.bottom + sy, tint: tint });
+    }
+    var changed = list.length !== zones.length || list.some(function (a, i) {
+      var b = zones[i];
+      return Math.abs(a.l - b.l) > 0.5 || Math.abs(a.t - b.t) > 0.5 || Math.abs(a.r - b.r) > 0.5 || Math.abs(a.b - b.b) > 0.5 || a.tint !== b.tint;
+    });
+    zones = list;
+    return changed;
+  }
+
+  /* ---------- 金屬拉絲的明暗：沿 45° 方向重複，整頁連續不斷 ---------- */
+  var METAL = [[0.00, "140,175,198", 0.15], [0.22, "190,220,234", 0.24], [0.42, "125,158,182", 0.13],
+               [0.62, "180,212,228", 0.22], [0.82, "125,158,182", 0.13], [1.00, "160,195,215", 0.19]];
+  var METAL_T = [[0.00, 0.26], [0.30, 0.42], [0.55, 0.24], [0.80, 0.40], [1.00, 0.28]];
+  function metalGradient(c, top, bottom, tint) {
+    var P = W + H || 1, s0 = top, s1 = W + bottom;           // s = x + y（整頁座標）
+    var g = c.createLinearGradient(s0 / 2, s0 / 2, s1 / 2, s1 / 2);
+    var span = s1 - s0 || 1;
+    var stops = tint ? METAL_T.map(function (s) { return [s[0], tint, s[1]]; }) : METAL;
+    var k0 = Math.floor(s0 / P), k1 = Math.ceil(s1 / P);
+    for (var k = k0; k <= k1; k++) {
+      for (var i = 0; i < stops.length; i++) {
+        var f = ((k + stops[i][0]) * P - s0) / span;
+        if (f >= 0 && f <= 1) g.addColorStop(f, "rgba(" + stops[i][1] + "," + stops[i][2] + ")");
+      }
+    }
+    return g;
+  }
+
+  // 在 c 上畫走線與焊點（整頁座標，呼叫前已設定好位移）
+  function drawTraces(c, list, top, bottom, tint) {
+    c.lineWidth = 1;
+    c.lineJoin = "round"; c.lineCap = "round";
+    c.strokeStyle = metalGradient(c, top, bottom, tint);
+    c.beginPath();
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i].pts;
+      c.moveTo(p[0][0], p[0][1]);
+      for (var k = 1; k < p.length; k++) c.lineTo(p[k][0], p[k][1]);
+    }
+    c.stroke();
+    c.strokeStyle = tint ? "rgba(" + tint + ",0.5)" : "rgba(180,212,228,0.30)";
+    c.beginPath();
+    for (i = 0; i < list.length; i++) {
+      var q = list[i].pts, e = q[q.length - 1];
+      c.moveTo(e[0] + 2, e[1]); c.arc(e[0], e[1], 2, 0, Math.PI * 2);
+      if (list[i].via0) { c.moveTo(q[0][0] + 2, q[0][1]); c.arc(q[0][0], q[0][1], 2, 0, Math.PI * 2); }
+    }
+    c.stroke();
+  }
+
+  /* ---------- 電路板層：分塊畫布，只畫畫面附近的幾塊 ---------- */
+  function rebuildTiles() {
+    boardDpr = coarse ? Math.min(dpr, 1.5) : dpr;
+    board.style.height = docH + "px";
+    var n = Math.max(1, Math.ceil(docH / TILE));
+    while (tiles.length > n) board.removeChild(tiles.pop().el);
+    while (tiles.length < n) {
+      var el = document.createElement("canvas");
+      board.appendChild(el);
+      tiles.push({ el: el, c: el.getContext("2d") });
+    }
+    tiles.forEach(function (tile, i) {
+      tile.top = i * TILE;
+      tile.h = Math.min(TILE, docH - tile.top) || TILE;
+      tile.el.style.top = tile.top + "px";
+      tile.el.style.height = tile.h + "px";
+      tile.drawn = false;
+    });
+    ensureTiles(window.scrollY || 0);
+  }
+
+  function renderTile(tile) {
+    var el = tile.el, c = tile.c;
+    el.width = Math.round(W * boardDpr); el.height = Math.round(tile.h * boardDpr);
+    c.setTransform(boardDpr, 0, 0, boardDpr, 0, -tile.top * boardDpr);
+    var top = tile.top, bottom = tile.top + tile.h;
+    var list = visibleTraces(top - 20, bottom + 20);
+    drawTraces(c, list, top, bottom);
+    // 換色區：先清掉該區塊，再用卡片顏色重畫
+    for (var z = 0; z < zones.length; z++) {
+      var Z = zones[z];
+      if (Z.b < top || Z.t > bottom) continue;
+      var local = list.filter(function (t) { return t.maxY >= Z.t && t.minY <= Z.b && t.maxX >= Z.l && t.minX <= Z.r; });
+      c.save();
+      c.beginPath(); c.rect(Z.l, Z.t, Z.r - Z.l, Z.b - Z.t); c.clip();
+      c.clearRect(Z.l, Z.t, Z.r - Z.l, Z.b - Z.t);
+      drawTraces(c, local, top, bottom, Z.tint);
+      c.restore();
+    }
+    tile.drawn = true;
+  }
+
+  // 只保留畫面上下各約兩塊，離太遠的釋放記憶體（手機很重要）
+  function ensureTiles(sy) {
+    if (!(W > 0 && H > 0)) return;
+    var a = Math.floor((sy - H) / TILE), b = Math.floor((sy + 2 * H) / TILE);
+    for (var i = 0; i < tiles.length; i++) {
+      var tile = tiles[i];
+      if (i >= a && i <= b) { if (!tile.drawn) renderTile(tile); }
+      else if (tile.drawn && (i < a - 2 || i > b + 2)) { tile.el.width = 0; tile.el.height = 0; tile.drawn = false; }
+    }
+  }
+
+  function redrawTiles() {
+    tiles.forEach(function (tile) { tile.drawn = false; });
+    ensureTiles(window.scrollY || 0);
+  }
+
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // 寬度改變才重新佈局（手機捲動時網址列伸縮只改高度）
-    var h = document.documentElement.scrollHeight;
+    var h = docHeight();
     if (W !== layoutW || Math.abs(h - docH) > 200) { docH = h; layout(); }
+    else if (measureZones()) redrawTiles();
+    else ensureTiles(window.scrollY || 0);
   }
 
-  /* ---------- 繪製 ---------- */
+  /* ---------- 動態層：反光與電流（畫在固定於視窗的 canvas） ---------- */
   function tracePath(t, sy) {
     var p = t.pts;
     ctx.moveTo(p[0][0], p[0][1] - sy);
     for (var i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1] - sy);
   }
 
-  // tint：換色區的顏色（"R, G, B"）；沒有傳就用預設的金屬銀灰與蒂芬妮藍
-  function drawBoard(sy, vis, tint) {
-    // 視窗大小為 0（例如分頁在背景載入）時先不畫，避免漸層計算出錯
-    if (!(W > 0 && H > 0)) return;
-    var accent = tint || CONFIG.color;
-    // 走線：金屬拉絲般的明暗變化（換色區改成該顏色的明暗）
-    var shift = (sy * 0.12) % (W + H);
-    var metal = ctx.createLinearGradient(-shift, 0, W + H - shift, H);
-    if (tint) {
-      metal.addColorStop(0.00, "rgba(" + tint + ",0.26)");
-      metal.addColorStop(0.30, "rgba(" + tint + ",0.42)");
-      metal.addColorStop(0.55, "rgba(" + tint + ",0.24)");
-      metal.addColorStop(0.80, "rgba(" + tint + ",0.40)");
-      metal.addColorStop(1.00, "rgba(" + tint + ",0.28)");
-    } else {
-      metal.addColorStop(0.00, "rgba(140,175,198,0.15)");
-      metal.addColorStop(0.22, "rgba(190,220,234,0.24)");
-      metal.addColorStop(0.42, "rgba(125,158,182,0.13)");
-      metal.addColorStop(0.62, "rgba(180,212,228,0.22)");
-      metal.addColorStop(0.82, "rgba(125,158,182,0.13)");
-      metal.addColorStop(1.00, "rgba(160,195,215,0.19)");
-    }
-    ctx.lineWidth = 1;
+  // 反光：游標或點擊處附近的走線變亮
+  function glowAt(x, y, R, strength, sy, vis, color) {
+    if (strength <= 0.01) return;
+    var g = ctx.createRadialGradient(x, y - sy, 0, x, y - sy, R);
+    g.addColorStop(0, "rgba(" + color + "," + strength.toFixed(3) + ")");
+    g.addColorStop(1, "rgba(" + color + ",0)");
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 1.2;
     ctx.lineJoin = "round"; ctx.lineCap = "round";
-    ctx.strokeStyle = metal;
     ctx.beginPath();
-    for (var i = 0; i < vis.length; i++) tracePath(vis[i], sy);
-    ctx.stroke();
-
-    // 過孔（焊點）
-    ctx.strokeStyle = tint ? "rgba(" + tint + ",0.5)" : "rgba(180,212,228,0.30)";
-    ctx.beginPath();
-    for (i = 0; i < vis.length; i++) {
-      var p = vis[i].pts, e = p[p.length - 1];
-      ctx.moveTo(e[0] + 2, e[1] - sy); ctx.arc(e[0], e[1] - sy, 2, 0, Math.PI * 2);
-      if (vis[i].via0) { ctx.moveTo(p[0][0] + 2, p[0][1] - sy); ctx.arc(p[0][0], p[0][1] - sy, 2, 0, Math.PI * 2); }
+    for (var i = 0; i < vis.length; i++) {
+      var t = vis[i];
+      if (t.maxY < y - R || t.minY > y + R || t.maxX < x - R || t.minX > x + R) continue;
+      tracePath(t, sy);
     }
     ctx.stroke();
+  }
 
-    // 滑鼠附近的走線反光
-    if (mouse && !reduce.matches) {
-      var mx = mouse.x, my = mouse.y, R = CONFIG.spotlight;
-      var glow = ctx.createRadialGradient(mx, my - sy, 0, mx, my - sy, R);
-      glow.addColorStop(0, "rgba(" + accent + "," + (tint ? 0.85 : 0.62) + ")");
-      glow.addColorStop(1, "rgba(" + accent + ",0)");
-      ctx.strokeStyle = glow;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      for (i = 0; i < vis.length; i++) {
-        var t = vis[i];
-        if (t.maxY < my - R || t.minY > my + R || t.maxX < mx - R || t.minX > mx + R) continue;
-        tracePath(t, sy);
-      }
-      ctx.stroke();
+  function drawGlows(sy, vis, tint, now) {
+    if (reduce.matches) return;
+    var color = tint || CONFIG.color;
+    if (mouse) glowAt(mouse.x, mouse.y, CONFIG.spotlight, tint ? 0.85 : 0.62, sy, vis, color);
+    for (var i = 0; i < taps.length; i++) {
+      var k = 1 - (now - taps[i].t0) / CONFIG.tapGlowMs;
+      if (k > 0) glowAt(taps[i].x, taps[i].y, CONFIG.tapGlow, (tint ? 0.95 : 0.8) * k, sy, vis, color);
     }
   }
 
-  /* ---------- 電流 ---------- */
   function pointAt(t, d) {
     d = Math.max(0, Math.min(d || 0, t.total));
     var k = 1;
@@ -297,34 +413,52 @@
     ctx.stroke();
   }
 
-  // 電流：從 from 沿 dir（+1 / -1）方向跑 len 的距離
-  function spawn(t, from, dir, cursor) {
-    currents.push({ t: t, from: from, pos: from, dir: dir,
-                    len: cursor ? 140 + Math.random() * 120 : t.total,
-                    speed: cursor ? 420 : 230 + Math.random() * 90,
-                    tail: cursor ? 55 : 80, alpha: cursor ? 1 : 0.75, cursor: cursor });
+  // 電流：從 from 沿 dir（+1 / -1）方向跑；kind：ambient 背景／cursor 滑鼠／tap 點擊
+  function spawn(t, from, dir, kind) {
+    var c = { t: t, from: from, pos: from, dir: dir, kind: kind, cursor: kind !== "ambient" };
+    if (kind === "cursor") { c.len = 140 + Math.random() * 120; c.speed = 420; c.tail = 55; c.alpha = 1; }
+    else if (kind === "tap") { c.len = 220 + Math.random() * 180; c.speed = 380; c.tail = 70; c.alpha = 1; }
+    else { c.len = t.total; c.speed = 230 + Math.random() * 90; c.tail = 80; c.alpha = 0.75; }
+    currents.push(c);
   }
 
-  function nearestTrace(x, y, r, vis) {
-    var best = null, bd = r * r;
+  // 找出 (x, y) 附近的走線，依距離由近到遠排序
+  function nearTraces(x, y, r, vis, max) {
+    var found = [];
     for (var n = 0; n < vis.length; n++) {
-      var t = vis[n];
+      var t = vis[n], bd = r * r, at = -1;
       if (t.maxX < x - r || t.minX > x + r || t.maxY < y - r || t.minY > y + r) continue;
       for (var k = 1; k < t.pts.length; k++) {
         var a = t.pts[k - 1], b = t.pts[k], vx = b[0] - a[0], vy = b[1] - a[1], L = vx * vx + vy * vy || 1;
         var f = Math.max(0, Math.min(1, ((x - a[0]) * vx + (y - a[1]) * vy) / L));
         var px = a[0] + vx * f, py = a[1] + vy * f, dd = (px - x) * (px - x) + (py - y) * (py - y);
-        if (dd < bd) { bd = dd; best = { t: t, at: t.cum[k - 1] + Math.sqrt(L) * f }; }
+        if (dd < bd) { bd = dd; at = t.cum[k - 1] + Math.sqrt(L) * f; }
       }
+      if (at >= 0) found.push({ t: t, at: at, d: bd });
     }
-    return best;
+    found.sort(function (a, b) { return a.d - b.d; });
+    return found.slice(0, max);
   }
 
   function burstAt(x, y, vis) {
-    var n = nearestTrace(x, y, 45, vis);
+    var n = nearTraces(x, y, 45, vis, 1)[0];
     if (!n) return;
-    spawn(n.t, n.at, 1, true);
-    if (n.at > 20) spawn(n.t, n.at, -1, true);
+    spawn(n.t, n.at, 1, "cursor");
+    if (n.at > 20) spawn(n.t, n.at, -1, "cursor");
+  }
+
+  // 手機點一下：反光＋從附近幾條走線往兩邊放電流
+  function tapAt(cx, cy) {
+    if (reduce.matches) return;
+    var sy = window.scrollY || 0, y = cy + sy, now = performance.now();
+    taps.push({ x: cx, y: y, t0: now });
+    var tapN = currents.filter(function (c) { return c.kind === "tap"; }).length;
+    var list = nearTraces(cx, y, CONFIG.tapRadius, visibleTraces(y - CONFIG.tapRadius, y + CONFIG.tapRadius), CONFIG.tapTraces);
+    for (var i = 0; i < list.length && tapN < CONFIG.tapMax; i++) {
+      spawn(list[i].t, list[i].at, 1, "tap"); tapN++;
+      if (list[i].at > 20 && tapN < CONFIG.tapMax) { spawn(list[i].t, list[i].at, -1, "tap"); tapN++; }
+    }
+    if (!running) start();
   }
 
   // 電流跑完（超過終點一個尾巴長度）就移除
@@ -334,7 +468,6 @@
   }
 
   function drawCurrent(c, sy, color) {
-    color = color || CONFIG.color;
     var endPos = c.dir > 0 ? Math.min(c.t.total, c.from + c.len) : Math.max(0, c.from - c.len);
     var over = c.dir > 0 ? c.pos - endPos : endPos - c.pos;
     var head = c.dir > 0 ? Math.min(c.pos, endPos) : Math.max(c.pos, endPos);
@@ -355,33 +488,34 @@
     }
   }
 
-  // 畫一整層：走線、反光、電流（tint 有值時用該顏色）
-  function paint(sy, vis, tint) {
-    drawBoard(sy, vis, tint);
+  // 畫一整層動態效果：反光＋電流（tint 有值時用該顏色）
+  function paintFx(sy, vis, tint, list, now) {
+    drawGlows(sy, vis, tint, now);
+    if (!list.length) return;
     var color = tint || CONFIG.color;
     ctx.save();
     ctx.shadowColor = "rgba(" + color + ",0.95)";
-    ctx.shadowBlur = 9;
+    ctx.shadowBlur = coarse ? 6 : 9;
     ctx.lineCap = "round";
-    for (var i = 0; i < currents.length; i++) drawCurrent(currents[i], sy, color);
+    for (var i = 0; i < list.length; i++) drawCurrent(list[i], sy, color);
     ctx.restore();
   }
 
-  // 換色區：先清掉該區塊，再用指定顏色重畫一次（只畫在區塊範圍內）
-  function paintTintZones(sy, vis) {
-    var zones = document.querySelectorAll(CONFIG.tintSel);
+  // 換色區：清掉該區塊的動態效果，改用卡片顏色重畫（只處理畫面內、而且有東西要畫的卡片）
+  function paintFxZones(sy, vis, now) {
     for (var z = 0; z < zones.length; z++) {
-      var el = zones[z], r = el.getBoundingClientRect();
-      if (r.bottom < 0 || r.top > H || !r.width) continue;
-      var tint = el.getAttribute("data-fx-tint") || getComputedStyle(el).getPropertyValue("--tint").trim();
-      if (!tint) continue;
-      // 只取跟這個區塊重疊的走線，減少重畫的量
-      var top = r.top + sy, bottom = r.bottom + sy;
-      var local = vis.filter(function (t) { return t.maxY >= top && t.minY <= bottom && t.maxX >= r.left && t.minX <= r.right; });
+      var Z = zones[z];
+      if (Z.b < sy || Z.t > sy + H) continue;
+      var list = currents.filter(function (c) { return c.t.maxY >= Z.t && c.t.minY <= Z.b && c.t.maxX >= Z.l && c.t.minX <= Z.r; });
+      var lit = (mouse && mouse.x > Z.l - CONFIG.spotlight && mouse.x < Z.r + CONFIG.spotlight && mouse.y > Z.t - CONFIG.spotlight && mouse.y < Z.b + CONFIG.spotlight) ||
+                taps.some(function (p) { return p.x > Z.l - CONFIG.tapGlow && p.x < Z.r + CONFIG.tapGlow && p.y > Z.t - CONFIG.tapGlow && p.y < Z.b + CONFIG.tapGlow; });
+      if (!list.length && !lit) continue;
+      var local = vis.filter(function (t) { return t.maxY >= Z.t && t.minY <= Z.b && t.maxX >= Z.l && t.minX <= Z.r; });
+      var x = Z.l, y = Z.t - sy, w = Z.r - Z.l, h = Z.b - Z.t;
       ctx.save();
-      ctx.beginPath(); ctx.rect(r.left, r.top, r.width, r.height); ctx.clip();
-      ctx.clearRect(r.left, r.top, r.width, r.height);
-      paint(sy, local, tint);
+      ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+      ctx.clearRect(x, y, w, h);
+      paintFx(sy, local, Z.tint, list, now);
       ctx.restore();
     }
   }
@@ -393,18 +527,19 @@
     lastT = now;
     var sy = window.scrollY || window.pageYOffset || 0;
     if (mouse) mouse.y = mouse.cy + sy;
-    var h = document.documentElement.scrollHeight;
+    var h = docHeight();
     if (Math.abs(h - docH) > 200) { docH = h; layout(); }
+    ensureTiles(sy);
 
     var vis = visibleTraces(sy - 20, sy + H + 20);
 
     // 背景電流：維持固定數量
     var ambient = 0, cursorN = 0;
-    currents.forEach(function (c) { if (c.cursor) cursorN++; else ambient++; });
+    currents.forEach(function (c) { if (c.kind === "cursor") cursorN++; else if (c.kind === "ambient") ambient++; });
     var want = coarse ? Math.min(3, CONFIG.ambientCount) : CONFIG.ambientCount;
     if (ambient < want && now > nextAmbient && vis.length) {
       var t = vis[Math.floor(Math.random() * vis.length)];
-      if (t.total > 80) spawn(t, 0, 1, false);
+      if (t.total > 80) spawn(t, 0, 1, "ambient");
       nextAmbient = now + 250 + Math.random() * 700;
     }
 
@@ -414,29 +549,25 @@
       if (dx * dx + dy * dy > 22 * 22) { lastSpawn = { x: mouse.x, y: mouse.y }; burstAt(mouse.x, mouse.y, vis); }
     }
 
-    // 推進電流，跑完或離畫面太遠的移除
+    // 推進電流，跑完或離畫面太遠的移除；點擊反光淡出後移除
     for (var i = currents.length - 1; i >= 0; i--) {
       var c = currents[i];
       c.pos += c.dir * c.speed * dt;
       if (c.t.maxY < sy - 400 || c.t.minY > sy + H + 400 || currentDone(c)) currents.splice(i, 1);
     }
+    taps = taps.filter(function (p) { return now - p.t0 < CONFIG.tapGlowMs; });
 
     ctx.clearRect(0, 0, W, H);
-    paint(sy, vis);
-    paintTintZones(sy, vis);
+    paintFx(sy, vis, null, currents, now);
+    paintFxZones(sy, vis, now);
     if (!once) requestAnimationFrame(frame);
   }
 
   function drawStatic() {
-    var sy = window.scrollY || 0;
-    var h = document.documentElement.scrollHeight;
+    var h = docHeight();
     if (Math.abs(h - docH) > 200) { docH = h; layout(); }
-    var vis = visibleTraces(sy - 20, sy + H + 20);
+    ensureTiles(window.scrollY || 0);
     ctx.clearRect(0, 0, W, H);
-    drawBoard(sy, vis);
-    var saved = currents; currents = [];
-    paintTintZones(sy, vis);
-    currents = saved;
   }
 
   function start() {
@@ -446,29 +577,55 @@
   }
   function stop() { running = false; }
   function update() {
-    if (reduce.matches) { stop(); currents = []; drawStatic(); }
+    if (reduce.matches) { stop(); currents = []; taps = []; drawStatic(); }
     else start();
+  }
+
+  // 版面變動（篩選作品、圖片載入、字型載入）時，重量卡片位置並重畫電路板
+  var refreshQueued = false;
+  function refresh() {
+    if (refreshQueued) return;
+    refreshQueued = true;
+    requestAnimationFrame(function () {
+      refreshQueued = false;
+      var h = docHeight();
+      if (Math.abs(h - docH) > 200) { docH = h; layout(); }
+      else if (measureZones()) redrawTiles();
+      if (!running) drawStatic();
+    });
   }
 
   resize();
   window.addEventListener("resize", function () { resize(); if (!running) drawStatic(); });
   // 圖片、字型載入後版面位置會變，重新佈局讓文字區保持乾淨
   window.addEventListener("load", function () { docH = 0; resize(); if (!running) drawStatic(); });
-  window.addEventListener("scroll", function () { if (!running) drawStatic(); }, { passive: true });
+  window.addEventListener("scroll", function () { ensureTiles(window.scrollY || 0); }, { passive: true });
   window.addEventListener("pointermove", function (e) {
     if (e.pointerType && e.pointerType !== "mouse") return;
     mouse = { x: e.clientX, cy: e.clientY, y: e.clientY + (window.scrollY || 0) };
   }, { passive: true });
-  // 手機：點一下就從附近的走線放出電流
+  // 手機：手指「點一下」才放電流（滑動頁面時不會觸發）
+  var touchStart = null;
   window.addEventListener("pointerdown", function (e) {
-    if (e.pointerType === "mouse" || reduce.matches) return;
-    var sy = window.scrollY || 0;
-    burstAt(e.clientX, e.clientY + sy, visibleTraces(sy, sy + H));
+    if (e.pointerType === "mouse") return;
+    touchStart = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
   }, { passive: true });
+  window.addEventListener("pointerup", function (e) {
+    var s = touchStart; touchStart = null;
+    if (!s || e.pointerType === "mouse" || e.pointerId !== s.id) return;
+    var dx = e.clientX - s.x, dy = e.clientY - s.y;
+    if (dx * dx + dy * dy < 12 * 12 && performance.now() - s.t < 600) tapAt(e.clientX, e.clientY);
+  }, { passive: true });
+  window.addEventListener("pointercancel", function () { touchStart = null; }, { passive: true });
   document.documentElement.addEventListener("mouseleave", function () { mouse = null; });
   document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else update(); });
   if (reduce.addEventListener) reduce.addEventListener("change", update);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { docH = 0; resize(); if (!running) drawStatic(); });
+  if (window.MutationObserver) {
+    var main = document.querySelector("main") || document.body;
+    new MutationObserver(refresh).observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "class"] });
+  }
+  if (window.ResizeObserver) new ResizeObserver(refresh).observe(document.body);
 
   drawStatic();
   update();
@@ -477,6 +634,9 @@
   window.PortfolioFX = {
     step: function (ms) { frame((lastT || performance.now()) + (ms || 16), true); },
     count: function () { return currents.length; },
-    stats: function () { return { traces: traces.length, docH: docH }; }
+    tap: function (x, y) { tapAt(x, y); },
+    stats: function () {
+      return { traces: traces.length, docH: docH, tiles: tiles.length, drawnTiles: tiles.filter(function (t) { return t.drawn; }).length, zones: zones.length };
+    }
   };
 })();

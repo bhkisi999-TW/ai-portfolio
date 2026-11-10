@@ -6,7 +6,7 @@
  *
  * 欄位：
  *   id        英數 id
- *   icon      圖示：grid / search / scale / coins / gantt / cycle / pen / spark
+ *   icon      圖示：grid / search / scale / coins / gantt / cycle / pen / spark / flow
  *   title     能力名稱
  *   summary   一句話說明
  *   points    具體展現（2–3 點，只寫作品中確實有的內容）
@@ -132,6 +132,20 @@ window.PORTFOLIO_CAPABILITIES = [
       { "work": "dumpling-shop-startup-pitch", "note": "募資提案" },
       { "work": "wasen-izakaya-brand", "note": "和煎品牌" },
       { "work": "lixianchong-product-ad", "note": "理線充短影音" }
+    ]
+  },
+  {
+    "id": "workflow-automation",
+    "icon": "flow",
+    "title": "AI 工作流與自動化串接",
+    "summary": "把多個 AI 步驟和日常工具串成流程，讓內容從產生到發布自動完成。",
+    "points": [
+      "用 Google Opal 串接文案生成、圖片指令與出圖的多步驟工作流",
+      "用 Make 串連 Google 試算表、Facebook 粉專與 Gmail，自動發文並回寫狀態",
+      "搭配 Claude 排除設定問題，例如雲端硬碟圖片的共用權限"
+    ],
+    "evidence": [
+      { "work": "ai-social-auto-post", "note": "社群貼文自動發布" }
     ]
   }
 ];

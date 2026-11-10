@@ -69,6 +69,10 @@ html.has-fx body {
 }
 .fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; display: none; }
 html.has-fx .fx { display: block; }
+/* 電路板層：跟著頁面一起捲動（由 fx.js 分塊繪製），捲動時不用重畫，手機才順 */
+.fx-board { position: absolute; top: 0; left: 0; width: 100%; z-index: 0; pointer-events: none; overflow: hidden; display: none; }
+html.has-fx .fx-board { display: block; }
+.fx-board canvas { position: absolute; left: 0; width: 100%; display: block; }
 .topbar ~ main, .footer { position: relative; z-index: 1; }
 
 img { max-width: 100%; display: block; }
