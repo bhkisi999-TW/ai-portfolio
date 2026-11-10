@@ -6,7 +6,8 @@
  *   文字區（首頁介紹、各區標題）一開始就不長線。
  * - 電流：背景隨時有幾道光沿走線流動；滑鼠移動時，從游標最近的走線
  *   往兩個方向放出電流，附近的走線也會反光。
- * - 手機（沒有滑鼠）：手指點一下，點擊處會亮起一圈反光，並從附近幾條走線放出電流。
+ * - 手機（沒有滑鼠）：手指按住滑動頁面時，電流和反光會跟著手指走（等同電腦版的滑鼠）；
+ *   手指放開後反光淡出。單獨點一下，點擊處也會亮起反光並從附近幾條走線放出電流。
  * - 分兩層畫（2026-11-10 起）：
  *   1. 電路板層：走線與焊點畫在「跟著頁面一起捲動」的分塊畫布上，只畫一次，
  *      捲動時由瀏覽器直接移動，不用重畫，手機滑動才會順。
@@ -33,6 +34,8 @@
     tapTraces: 4,             // 最多從幾條走線放電流（每條往兩個方向）
     tapGlow: 140,             // 點擊反光半徑（px）
     tapGlowMs: 900,           // 點擊反光淡出時間（毫秒）
+    fingerStep: 26,           // 手指在頁面上移動多遠（px）就放一次電流
+    fingerFadeMs: 500,        // 手指放開後反光淡出時間（毫秒）
     tapMax: 16,               // 點擊電流同時最多幾道
     // 走線緊貼繞開的文字與按鈕（只避開字和按鈕本身，不會空出一大塊）
     quietText: ".hero .eyebrow, .hero__title, .hero__lead, .hero__stats dt, .hero__stats dd, .section__head .eyebrow, .section__title, .section__desc," +
@@ -66,6 +69,8 @@
   var W = 0, H = 0, dpr = 1, docH = 0, layoutW = 0;
   var traces = [], buckets = [], BUCKET = 200;
   var mouse = null, lastSpawn = { x: -1e4, y: -1e4 };
+  // 手指：x、cy 是螢幕座標；y 是整頁座標（頁面捲動時，手指底下的位置也跟著變）
+  var finger = null, fingerSpawn = { x: -1e4, y: -1e4 };
   var currents = [], nextAmbient = 0, taps = [];
   var running = false, lastT = 0;
   var TILE = 1024, tiles = [], zones = [], boardDpr = 1;
@@ -388,6 +393,10 @@
     if (reduce.matches) return;
     var color = tint || CONFIG.color;
     if (mouse) glowAt(mouse.x, mouse.y, CONFIG.spotlight, tint ? 0.85 : 0.62, sy, vis, color);
+    if (finger) {
+      var f = finger.end ? 1 - (now - finger.end) / CONFIG.fingerFadeMs : 1;
+      if (f > 0) glowAt(finger.x, finger.y, CONFIG.spotlight, (tint ? 0.9 : 0.7) * f, sy, vis, color);
+    }
     for (var i = 0; i < taps.length; i++) {
       var k = 1 - (now - taps[i].t0) / CONFIG.tapGlowMs;
       if (k > 0) glowAt(taps[i].x, taps[i].y, CONFIG.tapGlow, (tint ? 0.95 : 0.8) * k, sy, vis, color);
@@ -440,8 +449,8 @@
     return found.slice(0, max);
   }
 
-  function burstAt(x, y, vis) {
-    var n = nearTraces(x, y, 45, vis, 1)[0];
+  function burstAt(x, y, vis, r) {
+    var n = nearTraces(x, y, r || 45, vis, 1)[0];
     if (!n) return;
     spawn(n.t, n.at, 1, "cursor");
     if (n.at > 20) spawn(n.t, n.at, -1, "cursor");
@@ -508,6 +517,7 @@
       if (Z.b < sy || Z.t > sy + H) continue;
       var list = currents.filter(function (c) { return c.t.maxY >= Z.t && c.t.minY <= Z.b && c.t.maxX >= Z.l && c.t.minX <= Z.r; });
       var lit = (mouse && mouse.x > Z.l - CONFIG.spotlight && mouse.x < Z.r + CONFIG.spotlight && mouse.y > Z.t - CONFIG.spotlight && mouse.y < Z.b + CONFIG.spotlight) ||
+                (finger && finger.x > Z.l - CONFIG.spotlight && finger.x < Z.r + CONFIG.spotlight && finger.y > Z.t - CONFIG.spotlight && finger.y < Z.b + CONFIG.spotlight) ||
                 taps.some(function (p) { return p.x > Z.l - CONFIG.tapGlow && p.x < Z.r + CONFIG.tapGlow && p.y > Z.t - CONFIG.tapGlow && p.y < Z.b + CONFIG.tapGlow; });
       if (!list.length && !lit) continue;
       var local = vis.filter(function (t) { return t.maxY >= Z.t && t.minY <= Z.b && t.maxX >= Z.l && t.minX <= Z.r; });
@@ -547,6 +557,21 @@
     if (mouse && !coarse && cursorN < CONFIG.cursorMax) {
       var dx = mouse.x - lastSpawn.x, dy = mouse.y - lastSpawn.y;
       if (dx * dx + dy * dy > 22 * 22) { lastSpawn = { x: mouse.x, y: mouse.y }; burstAt(mouse.x, mouse.y, vis); }
+    }
+
+    // 手指按住滑動：手指底下的位置（含頁面捲動）每移動一小段，就從最近的走線放出電流
+    if (finger) {
+      finger.y = finger.cy + sy;
+      if (finger.end) {
+        if (now - finger.end > CONFIG.fingerFadeMs) finger = null;
+      } else if (cursorN < CONFIG.cursorMax) {
+        // 用「螢幕上」的移動距離：拖動頁面時內容跟著手指走，手指底下的頁面位置不會變
+        var fx = finger.x - fingerSpawn.x, fy = finger.cy - fingerSpawn.y;
+        if (fx * fx + fy * fy > CONFIG.fingerStep * CONFIG.fingerStep) {
+          fingerSpawn = { x: finger.x, y: finger.cy };
+          burstAt(finger.x, finger.y, vis, 70);
+        }
+      }
     }
 
     // 推進電流，跑完或離畫面太遠的移除；點擊反光淡出後移除
@@ -604,7 +629,7 @@
     if (e.pointerType && e.pointerType !== "mouse") return;
     mouse = { x: e.clientX, cy: e.clientY, y: e.clientY + (window.scrollY || 0) };
   }, { passive: true });
-  // 手機：手指「點一下」才放電流（滑動頁面時不會觸發）
+  // 手機：單獨「點一下」時，點擊處亮起反光並放出較多電流（滑動時改由下方的手指跟隨處理）
   var touchStart = null;
   window.addEventListener("pointerdown", function (e) {
     if (e.pointerType === "mouse") return;
@@ -617,6 +642,27 @@
     if (dx * dx + dy * dy < 12 * 12 && performance.now() - s.t < 600) tapAt(e.clientX, e.clientY);
   }, { passive: true });
   window.addEventListener("pointercancel", function () { touchStart = null; }, { passive: true });
+  // 手機：手指按住滑動時，電流跟著手指走
+  // （用 touch 事件：頁面開始捲動後 pointer 事件會中斷，touch 事件在捲動中仍會持續回報手指位置）
+  function fingerFrom(e) {
+    var p = e.touches && e.touches[0];
+    if (!p || reduce.matches) return;
+    var sy = window.scrollY || 0;
+    if (!finger || finger.end) {
+      finger = { x: p.clientX, cy: p.clientY, y: p.clientY + sy, end: 0 };
+      fingerSpawn = { x: -1e4, y: -1e4 };
+    } else {
+      finger.x = p.clientX; finger.cy = p.clientY; finger.y = p.clientY + sy;
+    }
+    if (!running) start();
+  }
+  window.addEventListener("touchstart", fingerFrom, { passive: true });
+  window.addEventListener("touchmove", fingerFrom, { passive: true });
+  function fingerUp(e) {
+    if (finger && (!e.touches || !e.touches.length)) finger.end = performance.now();
+  }
+  window.addEventListener("touchend", fingerUp, { passive: true });
+  window.addEventListener("touchcancel", fingerUp, { passive: true });
   document.documentElement.addEventListener("mouseleave", function () { mouse = null; });
   document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else update(); });
   if (reduce.addEventListener) reduce.addEventListener("change", update);
