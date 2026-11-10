@@ -63,6 +63,8 @@
   board.className = "fx-board";
   board.setAttribute("aria-hidden", "true");
   canvas.parentNode.insertBefore(board, canvas);
+  // 動態層放進電路板層裡：兩層一起跟著頁面捲動；電路板層會裁掉超出頁面底部的部分，不會把頁面撐長
+  board.appendChild(canvas);
 
   var reduce = matchMedia("(prefers-reduced-motion: reduce)");
   var coarse = matchMedia("(hover: none), (pointer: coarse)").matches;
@@ -74,6 +76,7 @@
   var currents = [], nextAmbient = 0, taps = [];
   var running = false, lastT = 0;
   var TILE = 1024, tiles = [], zones = [], boardDpr = 1;
+  var liveTop = 0, liveH = 0;   // 動態層在頁面中的位置與高度
 
   var D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
 
@@ -302,7 +305,7 @@
     while (tiles.length > n) board.removeChild(tiles.pop().el);
     while (tiles.length < n) {
       var el = document.createElement("canvas");
-      board.appendChild(el);
+      board.insertBefore(el, canvas);   // 電路板分塊放在動態層下面
       tiles.push({ el: el, c: el.getContext("2d") });
     }
     tiles.forEach(function (tile, i) {
@@ -352,11 +355,28 @@
     ensureTiles(window.scrollY || 0);
   }
 
+  // 動態層（電流與反光）也放在頁面裡跟著捲動，和電路板層同步移動，手機捲動時才不會晃。
+  // 畫布比螢幕高一倍，螢幕快捲出畫布範圍時才搬到新位置（以畫面為中心）。
+  function placeLive(sy, force) {
+    var margin = H * 0.25;
+    if (!force && sy - liveTop >= margin && liveTop + liveH - (sy + H) >= margin) return false;
+    liveTop = Math.max(0, Math.round(sy - (liveH - H) / 2));
+    canvas.style.top = liveTop + "px";
+    return true;
+  }
+
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth; H = window.innerHeight;
-    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // 動態層高度＝約兩個螢幕高（用螢幕高度估算，手機網址列伸縮時不用重建畫布）
+    var lh = Math.ceil(Math.max(H, (window.screen && window.screen.height) || H) * 2);
+    if (canvas.width !== Math.round(W * dpr) || lh !== liveH) {
+      liveH = lh;
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(liveH * dpr);
+      canvas.style.height = liveH + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      placeLive(window.scrollY || 0, true);
+    }
     // 寬度改變才重新佈局（手機捲動時網址列伸縮只改高度）
     var h = docHeight();
     if (W !== layoutW || Math.abs(h - docH) > 200) { docH = h; layout(); }
@@ -511,21 +531,22 @@
   }
 
   // 換色區：清掉該區塊的動態效果，改用卡片顏色重畫（只處理畫面內、而且有東西要畫的卡片）
-  function paintFxZones(sy, vis, now) {
+  // off：動態層在頁面中的位置（畫面座標 = 頁面座標 − off）
+  function paintFxZones(off, vis, now) {
     for (var z = 0; z < zones.length; z++) {
       var Z = zones[z];
-      if (Z.b < sy || Z.t > sy + H) continue;
+      if (Z.b < off || Z.t > off + liveH) continue;
       var list = currents.filter(function (c) { return c.t.maxY >= Z.t && c.t.minY <= Z.b && c.t.maxX >= Z.l && c.t.minX <= Z.r; });
       var lit = (mouse && mouse.x > Z.l - CONFIG.spotlight && mouse.x < Z.r + CONFIG.spotlight && mouse.y > Z.t - CONFIG.spotlight && mouse.y < Z.b + CONFIG.spotlight) ||
                 (finger && finger.x > Z.l - CONFIG.spotlight && finger.x < Z.r + CONFIG.spotlight && finger.y > Z.t - CONFIG.spotlight && finger.y < Z.b + CONFIG.spotlight) ||
                 taps.some(function (p) { return p.x > Z.l - CONFIG.tapGlow && p.x < Z.r + CONFIG.tapGlow && p.y > Z.t - CONFIG.tapGlow && p.y < Z.b + CONFIG.tapGlow; });
       if (!list.length && !lit) continue;
       var local = vis.filter(function (t) { return t.maxY >= Z.t && t.minY <= Z.b && t.maxX >= Z.l && t.minX <= Z.r; });
-      var x = Z.l, y = Z.t - sy, w = Z.r - Z.l, h = Z.b - Z.t;
+      var x = Z.l, y = Z.t - off, w = Z.r - Z.l, h = Z.b - Z.t;
       ctx.save();
       ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
       ctx.clearRect(x, y, w, h);
-      paintFx(sy, local, Z.tint, list, now);
+      paintFx(off, local, Z.tint, list, now);
       ctx.restore();
     }
   }
@@ -540,8 +561,11 @@
     var h = docHeight();
     if (Math.abs(h - docH) > 200) { docH = h; layout(); }
     ensureTiles(sy);
+    placeLive(sy);
+    var off = liveTop;
 
-    var vis = visibleTraces(sy - 20, sy + H + 20);
+    var vis = visibleTraces(sy - 20, sy + H + 20);              // 畫面內（用來放新電流）
+    var visLive = visibleTraces(off - 20, off + liveH + 20);   // 動態層範圍內（用來畫反光）
 
     // 背景電流：維持固定數量
     var ambient = 0, cursorN = 0;
@@ -578,13 +602,13 @@
     for (var i = currents.length - 1; i >= 0; i--) {
       var c = currents[i];
       c.pos += c.dir * c.speed * dt;
-      if (c.t.maxY < sy - 400 || c.t.minY > sy + H + 400 || currentDone(c)) currents.splice(i, 1);
+      if (c.t.maxY < off - 200 || c.t.minY > off + liveH + 200 || currentDone(c)) currents.splice(i, 1);
     }
     taps = taps.filter(function (p) { return now - p.t0 < CONFIG.tapGlowMs; });
 
-    ctx.clearRect(0, 0, W, H);
-    paintFx(sy, vis, null, currents, now);
-    paintFxZones(sy, vis, now);
+    ctx.clearRect(0, 0, W, liveH);
+    paintFx(off, visLive, null, currents, now);
+    paintFxZones(off, visLive, now);
     if (!once) requestAnimationFrame(frame);
   }
 
@@ -592,7 +616,7 @@
     var h = docHeight();
     if (Math.abs(h - docH) > 200) { docH = h; layout(); }
     ensureTiles(window.scrollY || 0);
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, W, liveH);
   }
 
   function start() {
