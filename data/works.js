@@ -118,12 +118,59 @@ window.PORTFOLIO_WORKS = [
     "tools": ["Google Opal", "Make", "Google 試算表", "Facebook 粉專", "Gmail", "Claude"],
     "coverImage": "works/ai-social-auto-post/post-1.jpg",
     "preview": [
-      { "type": "image", "src": "works/ai-social-auto-post/opal-workflow.jpg", "alt": "Google Opal 社群貼文生成工作流節點圖", "caption": "Google Opal 工作流：主題 → 文案 → 圖片指令 → 出圖 → IG 版面" },
+      { "type": "image", "src": "works/ai-social-auto-post/opal-workflow-public.jpg", "alt": "AI 社群內容生成工作流示意圖：主題輸入、AI 內容生成、圖像生成、內容整合、成果輸出", "caption": "AI 社群內容生成工作流（公開示意版）" },
       { "type": "image", "src": "works/ai-social-auto-post/post-1.jpg", "alt": "工作流產出的 IG 貼文：藍色機甲戰士", "caption": "產出的 IG 貼文 1" },
       { "type": "image", "src": "works/ai-social-auto-post/post-2.jpg", "alt": "工作流產出的 IG 貼文：賽博戰甲", "caption": "產出的 IG 貼文 2" },
       { "type": "image", "src": "works/ai-social-auto-post/make-scenario.jpg", "alt": "Make 自動發文流程：Google 試算表、Facebook 粉專、Google 試算表、Gmail 四個模組，右側為 Claude 協助設定的對話", "caption": "Make 自動化流程與 Claude 協助設定" },
       { "type": "image", "src": "works/ai-social-auto-post/facebook-post.jpg", "alt": "由 Make 自動發布到 Facebook 粉專的貼文截圖", "caption": "實際發布結果：由 Make 自動發布的 Facebook 粉專貼文" }
     ],
     "completedAt": "2026-11-09"
+  },
+  {
+    "id": "goutie-excel-data-system",
+    "title": "鍋貼店營運資料架構與 Excel 營運儀表板",
+    "category": "smart-sheet",
+    "summary": "從設定選單、四大主檔到交易與計算表，在 Excel 建立一套能自動算出成本、庫存與毛利的鍋貼店營運系統。",
+    "description": "以鍋貼店為情境，設計一套「能被自動化使用」的資料表：用「設定選單」集中管理所有下拉選項；商品、供應商、原物料主檔與商品配方 BOM 都轉成 Excel 表格，新增資料時格式、下拉與公式會自動延伸；原物料的主要供應商只能選擇啟用中的供應商，並自動帶出名稱。\n\n交易端建立銷售紀錄與進貨紀錄；計算端依 BOM 用量與最近進貨單價算出商品成本（內用與外帶分開計算），再推算各物料的銷售消耗、目前庫存與庫存狀態（正常／低於安全庫存／缺料），並逐筆計算營收、毛利與毛利率。\n\n最後整合成營運儀表板：年、月、日三層下拉會互相連動，KPI、商品銷售排行、通路分析與庫存異常清單都會依篩選即時更新，全部以公式與動態陣列產生。",
+    "badge": "課堂練習・模擬資料",
+    "notice": "本作品為課堂練習，店名、商品、供應商（含聯絡人與電話）與交易資料皆為模擬資料。",
+    "tools": ["Excel", "Claude for Excel", "ChatGPT"],
+    "coverImage": "works/goutie-excel-data-system/dashboard.jpg",
+    "preview": [
+      { "type": "image", "src": "works/goutie-excel-data-system/dashboard.jpg", "alt": "Excel 鍋貼店營運儀表板：年月日篩選、核心指標、商品銷售排行、通路別分析與庫存異常清單", "caption": "營運儀表板：篩選年份後，所有指標即時更新" },
+      { "type": "image", "src": "works/goutie-excel-data-system/architecture.svg", "alt": "鍋貼店營運系統架構圖：設定選單、四大主檔、交易紀錄、計算表到營運儀表板，以及後續的 VBA 與雲端延伸", "caption": "系統架構：資料從主檔、交易一路流向計算表與儀表板" },
+      { "type": "image", "src": "works/goutie-excel-data-system/bom.jpg", "alt": "商品配方 BOM 表：每個商品使用的原物料、每份用量、單位與適用通路", "caption": "商品配方 BOM：成本與庫存消耗都從這裡換算" },
+      { "type": "image", "src": "works/goutie-excel-data-system/inventory.jpg", "alt": "庫存管理表：期初庫存、累計進貨、銷售消耗、目前庫存與庫存狀態", "caption": "庫存管理：自動標示缺料與低於安全庫存的品項" },
+      { "type": "image", "src": "works/goutie-excel-data-system/sales-records.jpg", "alt": "銷售紀錄表：銷售日期、訂單編號、商品、數量、金額、成本與銷售通路", "caption": "銷售紀錄：交易資料以表格登錄" }
+    ],
+    "completedAt": "2026-11-10"
+  },
+  {
+    "id": "goutie-cloud-automation",
+    "title": "鍋貼店營運自動化：VBA 一鍵報表與雲端儀表板",
+    "category": "product-demo",
+    "summary": "延伸 Excel 營運系統：用 VBA 一鍵產出日報、叫貨單與月報，再把資料搬上 Google 試算表，用 Apps Script 做成可新增銷售的網頁儀表板與每晚缺料通知。",
+    "description": "本機自動化：在 Excel 建立「巨集按鈕」清單與自訂功能區，三個按鈕分別一鍵產生指定日期的營業日報（營收、毛利、通路小計、熱銷排行與明細）、依供應商分組產出可直接傳送的叫貨訊息（可調整數量並詢問送貨日），以及月底跨檔彙總每日日報產出營業月報，結果都另存成新檔。\n\n雲端儀表板：把 Excel 轉成 Google 試算表當作資料庫，用 Google Apps Script 撰寫後端讀取資料，前端網頁呈現營運關鍵指標、商品毛利率與銷售排行、通路營收占比與庫存健康度，年月日篩選會即時連動；並加上「新增銷售」表單，送出後直接寫回試算表。網頁採 RWD 響應式設計，電腦、平板與手機都能正常瀏覽與操作。程式碼由 Claude 與 ChatGPT 協助產生、修改與除錯。\n\n主動通知：設定每天晚上 9 點的觸發器，自動把缺料與低於安全庫存的品項整理成 Email 寄給自己。",
+    "badge": "課堂練習・模擬資料",
+    "notice": "本作品為課堂練習，店名、商品、供應商（含聯絡人與電話）與交易資料皆為模擬資料。線上儀表板可實際操作，按「新增銷售」送出的資料會直接寫入試算表。",
+    "tools": ["Excel VBA", "Google 試算表", "Google Apps Script", "Gmail", "Claude", "ChatGPT"],
+    "coverImage": "works/goutie-cloud-automation/web-kpi.jpg",
+    "preview": [
+      { "type": "image", "src": "works/goutie-cloud-automation/web-kpi.jpg", "alt": "網頁儀表板：年月日篩選與營運關鍵指標", "caption": "網頁儀表板：年／月／日篩選與營運關鍵指標" },
+      { "type": "image", "src": "works/goutie-cloud-automation/web-products.jpg", "alt": "網頁儀表板：商品毛利率比較與商品銷售排行", "caption": "商品銷售分析：毛利率比較與銷售排行" },
+      { "type": "image", "src": "works/goutie-cloud-automation/web-channels.jpg", "alt": "網頁儀表板：各通路營收占比甜甜圈圖與通路營運分析", "caption": "銷售通路分析：營收占比與通路排行" },
+      { "type": "image", "src": "works/goutie-cloud-automation/web-inventory.jpg", "alt": "網頁儀表板：庫存健康度監控與庫存異常品項", "caption": "庫存健康度監控：缺料優先排在最前面" },
+      { "type": "image", "src": "works/goutie-cloud-automation/web-add-sale.jpg", "alt": "網頁儀表板的新增銷售表單：日期、商品、數量、折扣、通路與備註", "caption": "新增銷售：在網頁填表，直接寫回 Google 試算表" },
+      { "type": "image", "src": "works/goutie-excel-data-system/architecture.svg", "alt": "鍋貼店營運系統架構圖：Excel 資料架構、VBA 巨集、Google 試算表、Apps Script 後端與網頁儀表板", "caption": "系統架構：Excel 本機自動化與雲端儀表板" },
+      { "type": "image", "src": "works/goutie-cloud-automation/macro-buttons.jpg", "alt": "Excel 巨集按鈕清單：產生銷售日報、產出叫貨單、產出營業月報", "caption": "VBA 巨集按鈕清單" },
+      { "type": "image", "src": "works/goutie-cloud-automation/macro-daily-report.jpg", "alt": "巨集產出的鍋貼店營業日報：當日 KPI、各通路小計、熱銷商品排行與銷售明細", "caption": "一鍵產出：營業日報（另存新檔）" },
+      { "type": "image", "src": "works/goutie-cloud-automation/macro-purchase-order.jpg", "alt": "巨集產出的鍋貼店叫貨單：依供應商分組的叫貨訊息、聯絡人與電話", "caption": "一鍵產出：叫貨單，依供應商分組、可直接複製傳送" },
+      { "type": "image", "src": "works/goutie-cloud-automation/low-stock-email.jpg", "alt": "每晚自動寄出的缺料通知 Email：列出缺料與低於安全庫存的品項", "caption": "缺料自動 Email 通知" },
+      { "type": "image", "src": "works/goutie-cloud-automation/low-stock-trigger.jpg", "alt": "Apps Script 執行記錄：已建立每天晚上 9 點執行缺料通知的觸發器", "caption": "Apps Script 觸發器：每天晚上 9 點自動執行" }
+    ],
+    "links": [
+      { "label": "開啟線上儀表板", "url": "https://script.google.com/macros/s/AKfycbxGdaLpxrFnsJVx-AeuZD-wm_eUSsAx6GSIpQQT7tg62XFbKymWLrruz9OSCDrwAKY7mw/exec" }
+    ],
+    "completedAt": "2026-11-11"
   }
 ];

@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" font-family="'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#9fb6cc" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="900" fill="#0a1220"/>
+  <text x="60" y="78" fill="#eef5f8" font-size="42" font-weight="700">鍋貼店營運系統架構</text>
+  <text x="60" y="118" fill="#9fb6cc" font-size="22">11/10 在 Excel 建立能被自動化使用的資料表 → 11/11 加上 VBA 巨集，並上雲做成網頁儀表板</text>
+
+  <text x="60" y="182" fill="#5eead4" font-size="22" font-weight="700">11/10｜Excel 營運資料架構</text>
+  <g font-size="21" fill="#dbe7ef">
+    <rect x="60" y="200" width="260" height="260" rx="16" fill="#102033" stroke="#5eead4" stroke-opacity=".55"/>
+    <text x="84" y="246" fill="#5eead4" font-size="26" font-weight="700">① 設定選單</text>
+    <text x="84" y="300">下拉選單來源</text>
+    <text x="84" y="338">選項集中管理</text>
+    <text x="84" y="376">動態範圍自動延伸</text>
+
+    <rect x="365" y="200" width="260" height="260" rx="16" fill="#102033" stroke="#5eead4" stroke-opacity=".55"/>
+    <text x="389" y="246" fill="#5eead4" font-size="26" font-weight="700">② 四大主檔</text>
+    <text x="389" y="300">商品主檔</text>
+    <text x="389" y="338">供應商主檔</text>
+    <text x="389" y="376">原物料主檔</text>
+    <text x="389" y="414">商品配方 BOM</text>
+
+    <rect x="670" y="200" width="260" height="260" rx="16" fill="#102033" stroke="#5eead4" stroke-opacity=".55"/>
+    <text x="694" y="246" fill="#5eead4" font-size="26" font-weight="700">③ 交易紀錄</text>
+    <text x="694" y="300">銷售紀錄</text>
+    <text x="694" y="338">進貨紀錄</text>
+    <text x="694" y="376">每筆輸入固定值</text>
+
+    <rect x="975" y="200" width="260" height="260" rx="16" fill="#102033" stroke="#5eead4" stroke-opacity=".55"/>
+    <text x="999" y="246" fill="#5eead4" font-size="26" font-weight="700">④ 計算表</text>
+    <text x="999" y="300">商品成本</text>
+    <text x="999" y="338">庫存管理</text>
+    <text x="999" y="376">營收毛利</text>
+    <text x="999" y="414" fill="#9fb6cc" font-size="18">內用／外帶成本分開計算</text>
+
+    <rect x="1280" y="200" width="260" height="260" rx="16" fill="#1c1a12" stroke="#f4d08f" stroke-opacity=".7"/>
+    <text x="1304" y="246" fill="#f4d08f" font-size="26" font-weight="700">⑤ 營運儀表板</text>
+    <text x="1304" y="300">年／月／日連動篩選</text>
+    <text x="1304" y="338">KPI、商品排行</text>
+    <text x="1304" y="376">通路分析</text>
+    <text x="1304" y="414">庫存異常清單</text>
+  </g>
+  <g stroke="#9fb6cc" stroke-width="2" fill="none" marker-end="url(#a)">
+    <line x1="324" y1="330" x2="361" y2="330"/>
+    <line x1="629" y1="330" x2="666" y2="330"/>
+    <line x1="934" y1="330" x2="971" y2="330"/>
+    <line x1="1239" y1="330" x2="1276" y2="330"/>
+    <line x1="800" y1="468" x2="800" y2="520"/>
+  </g>
+
+  <text x="60" y="552" fill="#f4d08f" font-size="22" font-weight="700">11/11｜自動化與上雲</text>
+  <g font-size="21" fill="#dbe7ef">
+    <rect x="60" y="572" width="400" height="230" rx="16" fill="#1c1a12" stroke="#f4d08f" stroke-opacity=".7"/>
+    <text x="84" y="618" fill="#f4d08f" font-size="26" font-weight="700">VBA 一鍵巨集（Excel 本機）</text>
+    <text x="84" y="672">產生銷售日報</text>
+    <text x="84" y="710">產出叫貨單（依供應商分組）</text>
+    <text x="84" y="748">產出營業月報（跨檔彙總）</text>
+
+    <rect x="520" y="572" width="300" height="230" rx="16" fill="#151a33" stroke="#9fb0ff" stroke-opacity=".6"/>
+    <text x="544" y="618" fill="#b9c4ff" font-size="26" font-weight="700">Google 試算表</text>
+    <text x="544" y="672">Excel 轉檔上雲</text>
+    <text x="544" y="710">修正公式相容性</text>
+    <text x="544" y="748">當作資料庫使用</text>
+
+    <rect x="880" y="572" width="300" height="230" rx="16" fill="#151a33" stroke="#9fb0ff" stroke-opacity=".6"/>
+    <text x="904" y="618" fill="#b9c4ff" font-size="26" font-weight="700">Apps Script 後端</text>
+    <text x="904" y="672">讀寫試算表資料</text>
+    <text x="904" y="710">每晚 9 點缺料 Email</text>
+
+    <rect x="1240" y="572" width="300" height="230" rx="16" fill="#151a33" stroke="#9fb0ff" stroke-opacity=".6"/>
+    <text x="1264" y="618" fill="#b9c4ff" font-size="26" font-weight="700">網頁儀表板</text>
+    <text x="1264" y="672">篩選、圖表、排行</text>
+    <text x="1264" y="710">庫存健康監控</text>
+    <text x="1264" y="748">新增銷售寫回試算表</text>
+  </g>
+  <g stroke="#9fb6cc" stroke-width="2" fill="none" marker-end="url(#a)">
+    <line x1="824" y1="687" x2="876" y2="687"/>
+    <line x1="1184" y1="687" x2="1236" y2="687"/>
+  </g>
+  <text x="60" y="860" fill="#6f8399" font-size="18">店名、商品、供應商與交易資料皆為課堂模擬資料</text>
+</svg>

@@ -6,7 +6,7 @@
  *
  * 欄位：
  *   id        英數 id
- *   icon      圖示：grid / search / scale / coins / gantt / cycle / pen / spark / flow
+ *   icon      圖示：grid / search / scale / coins / gantt / cycle / pen / spark / flow / table / cloud
  *   title     能力名稱
  *   summary   一句話說明
  *   points    具體展現（2–3 點，只寫作品中確實有的內容）
@@ -142,10 +142,39 @@ window.PORTFOLIO_CAPABILITIES = [
     "points": [
       "用 Google Opal 串接文案生成、圖片指令與出圖的多步驟工作流",
       "用 Make 串連 Google 試算表、Facebook 粉專與 Gmail，自動發文並回寫狀態",
-      "搭配 Claude 排除設定問題，例如雲端硬碟圖片的共用權限"
+      "用 VBA 一鍵產出報表，並用 Apps Script 觸發器每晚自動寄送缺料通知"
     ],
     "evidence": [
-      { "work": "ai-social-auto-post", "note": "社群貼文自動發布" }
+      { "work": "ai-social-auto-post", "note": "社群貼文自動發布" },
+      { "work": "goutie-cloud-automation", "note": "VBA 巨集與缺料通知" }
+    ]
+  },
+  {
+    "id": "data-architecture",
+    "icon": "table",
+    "title": "營運資料架構設計",
+    "summary": "設計能被自動化使用的資料表，讓成本、庫存與毛利自動算出來。",
+    "points": [
+      "設定選單集中管理下拉選項，主檔轉成表格後自動延伸",
+      "用配方 BOM 換算商品成本與庫存消耗，內用、外帶分開計算",
+      "儀表板年月日連動篩選，指標以公式與動態陣列即時更新"
+    ],
+    "evidence": [
+      { "work": "goutie-excel-data-system", "note": "鍋貼店 Excel 營運系統" }
+    ]
+  },
+  {
+    "id": "cloud-dashboard",
+    "icon": "cloud",
+    "title": "雲端儀表板與前後端串接",
+    "summary": "把試算表當作資料庫，做成用手機也能看、還能寫回資料的網頁。",
+    "points": [
+      "把 Excel 轉成 Google 試算表，並修正公式相容性",
+      "Apps Script 後端讀寫資料，網頁前端呈現指標、圖表與庫存監控",
+      "「新增銷售」表單送出後直接寫回試算表"
+    ],
+    "evidence": [
+      { "work": "goutie-cloud-automation", "note": "雲端銷售與庫存儀表板" }
     ]
   }
 ];
